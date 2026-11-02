@@ -1,0 +1,44 @@
+# 运行环境（体积巨大，含第三方软件与数据，禁止提交）
+env/
+backup/
+
+# 构建产物
+target/
+*.class
+*.jar
+!flink-job/lib/*.jar
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 日志 / 状态
+*.log
+*.state
+producer.log
+dashboard.log
+notifier.log
+
+# IDE / 编辑器
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# 工具配置（与项目无关）
+opencode.json
+
+# 论文与文献（隐私 / 版权，不公开）
+文档/文献/
+文档/毕业论文.docx
+文档/文献综述.docx
+文档/系统设计与实现.docx
+文档/系统设计与实现.md
+文档/文献综述.md
+文档/文献摘要汇总.json
+文档/文献摘要汇总.txt
+
+# 论文配图
+文档/图/

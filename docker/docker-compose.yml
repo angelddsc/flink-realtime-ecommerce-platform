@@ -1,0 +1,104 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - bigdata
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks:
+      - bigdata
+
+  flink-jobmanager:
+    image: flink:1.17.1-scala_2.12-java11
+    container_name: flink-jobmanager
+    command: jobmanager
+    ports:
+      - "8081:8081"
+      - "6123:6123"
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        state.backend: filesystem
+        state.checkpoints.dir: file:///opt/flink/checkpoints
+        execution.checkpointing.interval: 60s
+        rest.flamegraph.enabled: true
+    volumes:
+      - ./flink-jobs:/opt/flink/usrlib
+      - flink-checkpoints:/opt/flink/checkpoints
+    networks:
+      - bigdata
+
+  flink-taskmanager:
+    image: flink:1.17.1-scala_2.12-java11
+    container_name: flink-taskmanager
+    command: taskmanager
+    depends_on:
+      - flink-jobmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 4
+    volumes:
+      - flink-checkpoints:/opt/flink/checkpoints
+    networks:
+      - bigdata
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    profiles:
+      - storage
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: bigdata
+      TZ: Asia/Shanghai
+    volumes:
+      - ../sql:/docker-entrypoint-initdb.d
+      - mysql-data:/var/lib/mysql
+    networks:
+      - bigdata
+
+  redis:
+    image: redis:7.2
+    container_name: redis
+    profiles:
+      - storage
+    ports:
+      - "6379:6379"
+    networks:
+      - bigdata
+
+networks:
+  bigdata:
+    driver: bridge
+
+volumes:
+  flink-checkpoints:
+  mysql-data:

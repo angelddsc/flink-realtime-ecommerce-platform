@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>电商实时交易监控</title>
+<script src="/static/echarts.min.js"></script>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#ffffff; --border:#e6ebf2;
+    --text:#0f1c2e; --muted:#6b7c93; --primary:#2563eb; --primary-soft:#eef3ff;
+    --danger:#ef4444; --success:#10b981;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  }
+  .sidebar{
+    position:fixed; left:0; top:0; width:224px; height:100vh;
+    background:var(--card); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; padding:20px 14px;
+  }
+  .brand{display:flex; align-items:center; gap:11px; padding:4px 8px 20px;}
+  .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#6366f1);
+        display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:17px;}
+  .brand h1{font-size:15px;font-weight:650;}
+  .brand p{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .nav{display:flex;flex-direction:column;gap:4px;margin-top:6px;}
+  .nav a{
+    display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;
+    color:#5b6b81;text-decoration:none;font-size:13.5px;font-weight:500;cursor:pointer;
+  }
+  .nav a svg{width:18px;height:18px;flex:0 0 18px;stroke:currentColor;fill:none;stroke-width:1.7;}
+  .nav a:hover{background:#f3f6fc;color:#334155;}
+  .nav a.active{background:var(--primary-soft);color:var(--primary);font-weight:650;}
+  .sidebar .foot{margin-top:auto;padding:12px 8px;color:var(--muted);font-size:11.5px;line-height:1.6;border-top:1px solid var(--border);}
+
+  .main{margin-left:224px;padding:22px 30px 40px;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;}
+  .topbar h2{font-size:19px;font-weight:650;}
+  .topbar .meta{display:flex;align-items:center;gap:18px;font-size:13px;color:var(--muted);}
+  .live{display:flex;align-items:center;gap:7px;color:var(--success);font-weight:600;}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--success);animation:pulse 1.8s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.45);}70%{box-shadow:0 0 0 8px rgba(16,185,129,0);}100%{box-shadow:0 0 0 0 rgba(16,185,129,0);}}
+  .clock{font-variant-numeric:tabular-nums;}
+  .range{border:1px solid var(--border);background:#fff;color:#334155;border-radius:8px;padding:6px 10px;font-size:12.5px;outline:none;}
+  .btn{border:1px solid var(--border);background:#fff;color:#334155;border-radius:8px;padding:6px 12px;font-size:12.5px;cursor:pointer;}
+  .btn:hover{background:#f3f6fc;}
+  .rule-input{width:120px;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;outline:none;}
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:18px;}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;box-shadow:0 1px 2px rgba(16,24,40,.04);}
+  .kpi .label{font-size:13px;color:var(--muted);}
+  .kpi .value{font-size:30px;font-weight:700;margin-top:10px;letter-spacing:.3px;}
+  .kpi .sub{font-size:12px;color:var(--muted);margin-top:6px;}
+  .kpi.gmv .value{color:var(--primary);}
+  .kpi.warn .value{color:var(--danger);}
+
+  .grid{display:grid;grid-template-columns:1.7fr 1fr;gap:18px;margin-bottom:18px;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px 12px;box-shadow:0 1px 2px rgba(16,24,40,.04);}
+  .panel-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;}
+  .panel-head h3{font-size:15px;font-weight:600;}
+  .panel-head .hint{font-size:12px;color:var(--muted);}
+
+  #ovBar,#ovLine,#catBar,#catLine{height:320px;}
+  .big #catBar{height:420px;}
+  #catLine{height:300px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #f0f3f8;}
+  th{color:var(--muted);font-weight:600;font-size:12px;background:#fafbfe;}
+  tbody tr:hover{background:#f8fafc;}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
+  .pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:999px;background:#fef2f2;color:#dc2626;}
+  .empty{color:var(--muted);font-size:13px;padding:16px 4px;}
+  #funnelChart{height:360px;}
+  .rates{display:grid;grid-template-columns:1fr;gap:14px;padding:10px 2px;}
+  .rate{background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;}
+  .rate .k{font-size:13px;color:var(--muted);}
+  .rate .v{font-size:24px;font-weight:700;color:var(--primary);}
+  .desc{font-size:12.5px;color:var(--muted);line-height:1.75;margin:0 0 14px;padding:12px 14px;background:#f8fafc;border:1px solid var(--border);border-radius:10px;}
+  .q4{grid-template-columns:repeat(4,1fr);}
+  #qualityChart{height:320px;}
+  .about p{font-size:13.5px;line-height:1.9;color:#3a4a5f;margin-bottom:10px;}
+  .about b{color:#0f1c2e;}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="logo">B</div>
+    <div><h1>交易监控</h1><p>UserBehavior 实时回放</p></div>
+  </div>
+  <nav class="nav">
+    <a data-view="overview" class="active">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      总览
+    </a>
+    <a data-view="category">
+      <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+      品类分析
+    </a>
+    <a data-view="funnel">
+      <svg viewBox="0 0 24 24"><path d="M4 4h16l-6 8v6l-4 2v-8L4 4z"/></svg>
+      转化漏斗
+    </a>
+    <a data-view="quality">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>
+      数据质量
+    </a>
+    <a data-view="cep">
+      <svg viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>
+      CEP 事件
+    </a>
+    <a data-view="rules">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+      规则配置
+    </a>
+    <a data-view="alerts">
+      <svg viewBox="0 0 24 24"><path d="M12 3l9 16H3L12 3z"/><path d="M12 9v4M12 16.5v.5"/></svg>
+      告警中心
+    </a>
+    <a data-view="metrics">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/></svg>
+      数据明细
+    </a>
+    <a data-view="about">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>
+      数据源说明
+    </a>
+  </nav>
+  <div class="foot">
+    数据源：淘宝用户行为数据集<br/>Kafka · Flink · MySQL · ECharts
+  </div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <h2 id="pageTitle">总览</h2>
+    <div class="meta">
+      <select id="rangeSel" class="range">
+        <option value="0">全部时间</option>
+        <option value="5">最近 5 分钟</option>
+        <option value="30">最近 30 分钟</option>
+        <option value="60">最近 60 分钟</option>
+      </select>
+      <div class="live"><span class="dot"></span>实时</div>
+      <div class="clock" id="clock"></div>
+    </div>
+  </div>
+
+  <!-- 总览 -->
+  <section class="view active" id="view-overview">
+    <div class="kpis">
+      <div class="kpi gmv"><div class="label">累计成交额</div><div class="value" id="totalGmv">-</div><div class="sub">按回放数据实时累加</div></div>
+      <div class="kpi"><div class="label">实时订单数</div><div class="value" id="metricRows">-</div><div class="sub">已落库的指标记录</div></div>
+      <div class="kpi warn"><div class="label">告警次数</div><div class="value" id="alertRows">-</div><div class="sub">超过阈值的窗口</div></div>
+    </div>
+    <div class="grid">
+      <div class="panel">
+        <div class="panel-head"><h3>品类成交额 Top 10</h3><span class="hint">点击柱子切换趋势</span></div>
+        <div id="ovBar"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3 id="ovTrendTitle">成交额趋势</h3><span class="hint">最近 30 个窗口</span></div>
+        <div id="ovLine"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>最新告警</h3><span class="hint">最近 5 条</span></div>
+      <div id="ovAlerts"></div>
+    </div>
+  </section>
+
+  <!-- 品类分析 -->
+  <section class="view" id="view-category">
+    <div class="grid big">
+      <div class="panel">
+        <div class="panel-head"><h3>品类成交额 Top 15</h3><select id="catSel" class="range"></select></div>
+        <div id="catBar"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3 id="catTrendTitle">成交额趋势</h3><span class="hint">最近 30 个窗口</span></div>
+        <div id="catLine"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>品类排行</h3><span class="hint">按最新窗口成交额</span></div>
+      <div id="catTable"></div>
+    </div>
+  </section>
+
+  <!-- 转化漏斗 -->
+  <section class="view" id="view-funnel">
+    <p class="desc">
+      漏斗展示最近一个 10 秒窗口内，用户从 <b>浏览（PV）→ 加购（Cart）→ 收藏（Fav）→ 购买（Buy）</b> 的行为数量。
+      转化率 = 对应行为数量 ÷ 浏览量（PV），用于衡量各环节的转化效率；数值越高说明用户购买意愿越强。
+    </p>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head"><h3>行为转化漏斗</h3><span class="hint" id="funnelWindow"></span></div>
+        <div id="funnelChart"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>转化率</h3><span class="hint">相对浏览量 PV</span></div>
+        <div id="funnelRates" class="rates"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 数据质量 -->
+  <section class="view" id="view-quality">
+    <p class="desc">
+      数据质量统计每 10 秒窗口内从 Kafka 接收的记录总数、有效记录与无效记录（解析失败或关键字段缺失），并计算无效占比，用于监控数据链路的健康度。
+    </p>
+    <div class="kpis q4">
+      <div class="kpi"><div class="label">接收记录</div><div class="value" id="qTotal">-</div><div class="sub">当前窗口</div></div>
+      <div class="kpi"><div class="label">有效记录</div><div class="value" id="qValid">-</div><div class="sub">解析成功且字段完整</div></div>
+      <div class="kpi warn"><div class="label">无效记录</div><div class="value" id="qInvalid">-</div><div class="sub">解析失败 / 字段缺失</div></div>
+      <div class="kpi"><div class="label">有效率</div><div class="value" id="qRate">-</div><div class="sub">有效 / 总数</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>无效数据占比趋势</h3><span class="hint">最近 30 个窗口</span></div>
+      <div id="qualityChart"></div>
+    </div>
+  </section>
+
+  <!-- CEP 事件 -->
+  <section class="view" id="view-cep">
+    <p class="desc">
+      CEP（复杂事件处理）用于识别事件序列中的模式。当前模式：同一用户对同一商品在 <b>30 分钟内「加购 → 购买」</b> 的转化路径，
+      检测结果实时写入 cep_event 表，可用于分析用户的购买决策链路。
+    </p>
+    <div class="panel">
+      <div class="panel-head"><h3>最近检测到的复合事件</h3><span class="hint">最近 50 条</span><button class="btn" onclick="exportTable('cepTable','CEP事件.csv')">导出 CSV</button></div>
+      <div id="cepTable"></div>
+    </div>
+  </section>
+
+  <!-- 规则配置 -->
+  <section class="view" id="view-rules">
+    <p class="desc">
+      告警规则存储在数据库 <b>alert_rule</b> 表中，作业每 30 秒自动加载最新规则。修改阈值或启用状态后保存，无需重启作业即可生效。
+    </p>
+    <div class="panel">
+      <div class="panel-head"><h3>告警规则</h3><span class="hint">修改后约 30 秒内生效</span></div>
+      <div id="ruleTable"></div>
+    </div>
+  </section>
+
+  <!-- 告警中心 -->
+  <section class="view" id="view-alerts">
+    <div class="panel">
+      <div class="panel-head"><h3>告警记录</h3><span class="hint">最近 50 条</span><button class="btn" onclick="exportTable('alertTable','告警记录.csv')">导出 CSV</button></div>
+      <div id="alertTable"></div>
+    </div>
+  </section>
+
+  <!-- 数据明细 -->
+  <section class="view" id="view-metrics">
+    <div class="panel">
+      <div class="panel-head"><h3>指标明细</h3><span class="hint">最近 50 条</span><button class="btn" onclick="exportTable('metricTable','指标明细.csv')">导出 CSV</button></div>
+      <div id="metricTable"></div>
+    </div>
+  </section>
+
+  <!-- 数据源说明 -->
+  <section class="view" id="view-about">
+    <div class="panel about">
+      <div class="panel-head"><h3>数据源与链路说明</h3></div>
+      <p><b>数据源：</b>公开数据集 淘宝用户行为数据集（UserBehavior.csv），字段为 user_id、item_id、category_id、behavior_type（pv/cart/fav/buy）、timestamp。</p>
+      <p><b>回放方式：</b>按时间戳顺序加速回放；buy 行为映射为支付成功，其余为非支付；金额由商品与品类派生。事件时间经压缩重定基到当前时间，保证窗口与延迟指标有效。</p>
+      <p><b>处理链路：</b>回放器 → Kafka（order-events）→ Flink（事件时间 + 水位线 + 10 秒滚动窗口聚合）→ MySQL（category_metric / alert_event）→ Flask + ECharts 大屏。</p>
+      <p><b>说明：</b>原始数据集仅提供品类编号（category_id），不包含品类名称，因此图表以“品类 #编号”展示；如提供映射表可在 dashboard/category_map.json 中补充名称。</p>
+    </div>
+  </section>
+</main>
+
+<script>
+const charts = {};
+let activeView = 'overview';
+let ovCategory = null;
+let catCategory = null;
+let rangeMinutes = 0;
+let catData = [];
+
+const AXIS = { color: '#8a9bb0', fontSize: 12 };
+const SPLIT = { lineStyle: { color: '#eef2f7' } };
+
+function getChart(id){
+  if (!charts[id]) charts[id] = echarts.init(document.getElementById(id));
+  return charts[id];
+}
+function fmtCat(c){ if (c && /^C\d+$/.test(c)) return '品类 #' + c.slice(1); return c; }
+function labelOf(r){ return r.category_name || fmtCat(r.category); }
+function fmtTime(ms){ const d=new Date(Number(ms)); const p=n=>String(n).padStart(2,'0'); return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()); }
+function money(v){ v=Number(v||0); if(v>=1e8) return '¥ '+(v/1e8).toFixed(2)+' 亿'; if(v>=1e4) return '¥ '+(v/1e4).toFixed(2)+' 万'; return '¥ '+v.toLocaleString(); }
+function moneyFull(v){ return '¥ ' + Number(v||0).toLocaleString(); }
+
+async function loadSummary(){
+  const r = await fetch('/api/summary').then(x=>x.json());
+  const set=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
+  set('totalGmv', money(r.total_gmv));
+  set('metricRows', Number(r.metric_rows||0).toLocaleString());
+  set('alertRows', Number(r.alert_rows||0).toLocaleString());
+}
+
+function barOption(data, labels){
+  return {
+    grid:{left:96,right:26,top:12,bottom:26},
+    tooltip:{trigger:'axis',axisPointer:{type:'shadow'},formatter:p=>p[0].name+'<br/>成交额：'+moneyFull(p[0].value)},
+    xAxis:{type:'value',axisLabel:AXIS,splitLine:SPLIT},
+    yAxis:{type:'category',data:labels,axisLabel:Object.assign({},AXIS,{fontSize:12.5}),axisTick:{show:false},axisLine:{show:false}},
+    series:[{type:'bar',data:data.map(r=>Number(r.gmv)),barWidth:'52%',
+      itemStyle:{color:'#2563eb',borderRadius:[0,6,6,0]},
+      label:{show:true,position:'right',color:'#475569',fontSize:11,formatter:p=>'¥'+Math.round(Number(p.value)).toLocaleString()}}]
+  };
+}
+function lineOption(rows){
+  if(!rows.length){return {title:{text:'暂无数据',left:'center',top:'middle',textStyle:{color:'#9aa8ba',fontSize:13,fontWeight:400}}};}
+  return {
+    grid:{left:66,right:22,top:16,bottom:34},
+    tooltip:{trigger:'axis',formatter:p=>p[0].axisValue+'<br/>成交额：'+moneyFull(p[0].value)},
+    xAxis:{type:'category',boundaryGap:false,data:rows.map(r=>fmtTime(r.window_end)),axisLabel:AXIS,axisLine:{lineStyle:{color:'#e6ebf2'}}},
+    yAxis:{type:'value',axisLabel:AXIS,splitLine:SPLIT},
+    series:[{type:'line',smooth:true,showSymbol:false,data:rows.map(r=>Number(r.gmv)),
+      lineStyle:{width:2.4,color:'#6366f1'},itemStyle:{color:'#6366f1'},
+      areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(99,102,241,0.18)'},{offset:1,color:'rgba(99,102,241,0.01)'}])}}]
+  };
+}
+
+async function renderOverview(){
+  await loadSummary();
+  const rows = await fetch('/api/latest?limit=10').then(x=>x.json());
+  const data = rows.slice().sort((a,b)=>Number(a.gmv)-Number(b.gmv));
+  const labels = data.map(labelOf);
+  const bar = getChart('ovBar');
+  bar.setOption(barOption(data, labels), true);
+  bar.off('click');
+  bar.on('click', p=>{ const i=data.findIndex(r=>labelOf(r)===p.name); if(i>=0){ ovCategory=data[i].category; renderOvTrend(); }});
+  if(!ovCategory && data.length) ovCategory = data[data.length-1].category;
+  renderOvTrend();
+  const alerts = await fetch('/api/alerts?limit=5').then(x=>x.json());
+  renderAlertTable('ovAlerts', alerts, 5);
+  setTimeout(()=>{ bar.resize(); if(charts['ovLine']) charts['ovLine'].resize(); }, 60);
+}
+async function renderOvTrend(){
+  if(!ovCategory) return;
+  document.getElementById('ovTrendTitle').textContent = labelOf({category:ovCategory}) + ' · 成交额趋势';
+  const rows = await fetch('/api/trend?category='+encodeURIComponent(ovCategory)+'&limit=30&minutes='+rangeMinutes).then(x=>x.json());
+  getChart('ovLine').setOption(lineOption(rows), true);
+}
+
+async function renderCategory(){
+  const rows = await fetch('/api/latest?limit=15').then(x=>x.json());
+  const data = rows.slice().sort((a,b)=>Number(a.gmv)-Number(b.gmv));
+  const labels = data.map(labelOf);
+  const bar = getChart('catBar');
+  bar.setOption(barOption(data, labels), true);
+  if(!catCategory && data.length) catCategory = data[data.length-1].category;
+  catData = data;
+  bar.off('click');
+  bar.on('click', p=>{ const i=data.findIndex(r=>labelOf(r)===p.name); if(i>=0){ catCategory=data[i].category; const sel=document.getElementById('catSel'); if(sel) sel.value=catCategory; renderCatTrend(); renderCatTable(data, i); }});
+  const sel = document.getElementById('catSel');
+  if(sel){ sel.innerHTML = data.slice().reverse().map(r=>'<option value="'+r.category+'">'+labelOf(r)+'</option>').join(''); sel.value = catCategory || ''; }
+  renderCatTrend();
+  renderCatTable(data, data.findIndex(r=>r.category===catCategory));
+  setTimeout(()=>{ bar.resize(); if(charts['catLine']) charts['catLine'].resize(); }, 60);
+}
+async function renderCatTrend(){
+  if(!catCategory) return;
+  document.getElementById('catTrendTitle').textContent = labelOf({category:catCategory}) + ' · 成交额趋势';
+  const rows = await fetch('/api/trend?category='+encodeURIComponent(catCategory)+'&limit=30&minutes='+rangeMinutes).then(x=>x.json());
+  getChart('catLine').setOption(lineOption(rows), true);
+}
+function renderCatTable(data, activeIdx){
+  const desc = data.slice().reverse();
+  let html = '<table><thead><tr><th>排名</th><th>品类</th><th class="num">支付订单</th><th class="num">成交额</th></tr></thead><tbody>';
+  if(!desc.length) html += '<tr><td colspan="4" class="empty">暂无数据</td></tr>';
+  desc.forEach((r,i)=>{
+    const label = labelOf(r);
+    const hl = (r.category === catCategory) ? ' style="background:#f3f6ff"' : '';
+    html += '<tr'+hl+'><td>'+(i+1)+'</td><td>'+label+'</td><td class="num">'+Number(r.paid_orders||0)+'</td><td class="num">'+moneyFull(r.gmv)+'</td></tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('catTable').innerHTML = html;
+}
+
+function renderAlertTable(elId, rows, limit){
+  const el = document.getElementById(elId);
+  if(!rows.length){ el.innerHTML = '<div class="empty">暂无告警，运行正常</div>'; return; }
+  let html = '<table><thead><tr><th>时间</th><th>类型</th><th>品类</th><th>内容</th><th class="num">实际值</th></tr></thead><tbody>';
+  rows.slice(0, limit||rows.length).forEach(a=>{
+    html += '<tr><td>'+a.created_at+'</td><td><span class="pill">'+a.alert_type+'</span></td><td>'+labelOf(a)+'</td><td>'+a.message+'</td><td class="num">'+Number(a.metric_value||0).toLocaleString()+'</td></tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+async function renderAlerts(){
+  const rows = await fetch('/api/alerts?limit=50&minutes='+rangeMinutes).then(x=>x.json());
+  renderAlertTable('alertTable', rows, 50);
+}
+
+async function renderMetrics(){
+  const rows = await fetch('/api/metrics?limit=50&minutes='+rangeMinutes).then(x=>x.json());
+  const el = document.getElementById('metricTable');
+  if(!rows.length){ el.innerHTML = '<div class="empty">暂无数据</div>'; return; }
+  let html = '<table><thead><tr><th>时间</th><th>品类</th><th class="num">支付订单</th><th class="num">成交额</th><th class="num">延迟(ms)</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    html += '<tr><td>'+r.created_at+'</td><td>'+labelOf(r)+'</td><td class="num">'+Number(r.paid_orders||0)+'</td><td class="num">'+moneyFull(r.gmv)+'</td><td class="num">'+Number(r.latency_ms||0)+'</td></tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+async function renderFunnel(){
+  const rows = await fetch('/api/funnel?limit=1&minutes='+rangeMinutes).then(x=>x.json());
+  const chart = getChart('funnelChart');
+  if(!rows.length){
+    chart.clear();
+    chart.setOption({title:{text:'等待数据…',left:'center',top:'middle',textStyle:{color:'#9aa8ba',fontSize:13,fontWeight:400}}});
+    document.getElementById('funnelRates').innerHTML = '';
+    return;
+  }
+  const r = rows[0];
+  const pv=Number(r.pv||0), cart=Number(r.cart||0), fav=Number(r.fav||0), buy=Number(r.buy||0);
+  document.getElementById('funnelWindow').textContent = '窗口 ' + fmtTime(r.window_end);
+  chart.setOption({
+    tooltip:{trigger:'item',formatter:p=>p.name+'：'+Number(p.value).toLocaleString()},
+    series:[{
+      type:'funnel', left:'12%', right:'12%', top:20, bottom:16,
+      minSize:'22%', maxSize:'100%', sort:'descending', gap:3,
+      label:{position:'inside',color:'#fff',fontSize:13,fontWeight:600,
+             formatter:p=>p.name+'  '+Number(p.value).toLocaleString()},
+      itemStyle:{borderColor:'#fff',borderWidth:2},
+      color:['#93c5fd','#60a5fa','#3b82f6','#1d4ed8'],
+      data:[
+        {value:pv,  name:'浏览 PV'},
+        {value:cart,name:'加购 Cart'},
+        {value:fav, name:'收藏 Fav'},
+        {value:buy, name:'购买 Buy'}
+      ]
+    }]
+  }, true);
+  setTimeout(()=>chart.resize(), 60);
+  const rates = [
+    ['加购率  cart / pv', pv? cart/pv*100 : 0],
+    ['收藏率  fav / pv',  pv? fav/pv*100  : 0],
+    ['购买率  buy / pv',  pv? buy/pv*100  : 0]
+  ];
+  document.getElementById('funnelRates').innerHTML = rates.map(x=>
+    '<div class="rate"><span class="k">'+x[0]+'</span><span class="v">'+x[1].toFixed(2)+'%</span></div>'
+  ).join('');
+}
+
+async function renderQuality(){
+  const rows = await fetch('/api/quality?limit=30').then(x=>x.json());
+  const chart = getChart('qualityChart');
+  const set=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
+  if(!rows.length){
+    set('qTotal','-'); set('qValid','-'); set('qInvalid','-'); set('qRate','-');
+    chart.clear();
+    chart.setOption({title:{text:'等待数据…',left:'center',top:'middle',textStyle:{color:'#9aa8ba',fontSize:13,fontWeight:400}}});
+    return;
+  }
+  const r = rows[0];
+  const total = Number(r.total||0), valid = Number(r.valid||0), invalid = Number(r.invalid||0);
+  set('qTotal', total.toLocaleString());
+  set('qValid', valid.toLocaleString());
+  set('qInvalid', invalid.toLocaleString());
+  set('qRate', (total>0 ? valid*100/total : 0).toFixed(2) + '%');
+  const trend = rows.slice().reverse();
+  chart.setOption({
+    grid:{left:62,right:22,top:20,bottom:34},
+    tooltip:{trigger:'axis',formatter:p=>p[0].axisValue+'<br/>无效占比：'+Number(p[0].value).toFixed(2)+'%'},
+    xAxis:{type:'category',boundaryGap:false,data:trend.map(x=>fmtTime(x.window_end)),axisLabel:AXIS,axisLine:{lineStyle:{color:'#e6ebf2'}}},
+    yAxis:{type:'value',max:100,axisLabel:Object.assign({},AXIS,{formatter:'{value}%'}),splitLine:SPLIT},
+    series:[{type:'line',smooth:true,showSymbol:false,data:trend.map(x=>Number(x.invalid_rate)),
+      lineStyle:{width:2.4,color:'#ef4444'},itemStyle:{color:'#ef4444'},
+      areaStyle:{color:'rgba(239,68,68,0.10)'}}]
+  }, true);
+  setTimeout(()=>chart.resize(),60);
+}
+
+async function renderCep(){
+  const rows = await fetch('/api/cep?limit=50').then(x=>x.json());
+  const el = document.getElementById('cepTable');
+  if(!rows.length){ el.innerHTML = '<div class="empty">暂未检测到复合事件</div>'; return; }
+  let html = '<table><thead><tr><th>时间</th><th>用户</th><th>商品</th><th>品类</th><th>模式</th><th class="num">间隔(秒)</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    html += '<tr><td>'+r.created_at+'</td><td>'+r.user_id+'</td><td>'+r.product_id+'</td><td>'+labelOf({category:r.category})+'</td><td><span class="pill">'+r.pattern+'</span></td><td class="num">'+(Number(r.gap_ms)/1000).toFixed(1)+'</td></tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+async function renderRules(){
+  const rows = await fetch('/api/rules').then(x=>x.json());
+  const el = document.getElementById('ruleTable');
+  if(!rows.length){ el.innerHTML = '<div class="empty">暂无规则</div>'; return; }
+  let html = '<table><thead><tr><th>名称</th><th>指标</th><th>条件</th><th>阈值</th><th>启用</th><th>操作</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    html += '<tr><td>'+r.name+'</td><td>'+r.metric+'</td><td>'+r.operator+'</td>'
+      + '<td><input class="rule-input" id="th-'+r.id+'" type="number" step="0.01" value="'+r.threshold+'"></td>'
+      + '<td><input type="checkbox" id="en-'+r.id+'" '+(r.enabled?'checked':'')+'></td>'
+      + '<td><button class="btn" onclick="saveRule('+r.id+')">保存</button></td></tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+async function saveRule(id){
+  const threshold = Number(document.getElementById('th-'+id).value);
+  const enabled = document.getElementById('en-'+id).checked;
+  await fetch('/api/rules/'+id, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({threshold: threshold, enabled: enabled})
+  });
+  renderRules();
+}
+
+function refreshActive(){
+  if(activeView==='rules') return;
+  if(activeView==='overview') renderOverview();
+  else if(activeView==='category') renderCategory();
+  else if(activeView==='funnel') renderFunnel();
+  else if(activeView==='quality') renderQuality();
+  else if(activeView==='cep') renderCep();
+  else if(activeView==='alerts') renderAlerts();
+  else if(activeView==='metrics') renderMetrics();
+}
+
+function show(view){
+  activeView = view;
+  document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active', a.dataset.view===view));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+view));
+  const titles = {overview:'总览', category:'品类分析', funnel:'转化漏斗', quality:'数据质量', cep:'CEP 事件', rules:'规则配置', alerts:'告警中心', metrics:'数据明细', about:'数据源说明'};
+  document.getElementById('pageTitle').textContent = titles[view] || '';
+  setTimeout(()=>{
+    Object.values(charts).forEach(c=>c.resize());
+    if(view==='rules') renderRules();
+    else if(view!=='about') refreshActive();
+  }, 60);
+}
+
+document.querySelectorAll('.nav a').forEach(a=>{
+  a.addEventListener('click', ()=> show(a.dataset.view));
+});
+
+document.getElementById('rangeSel').addEventListener('change', e=>{
+  rangeMinutes = Number(e.target.value);
+  refreshActive();
+});
+document.getElementById('catSel').addEventListener('change', e=>{
+  catCategory = e.target.value;
+  renderCatTrend();
+  renderCatTable(catData, -1);
+});
+
+function exportTable(elId, filename){
+  const root = document.getElementById(elId);
+  const table = root ? root.querySelector('table') : null;
+  if(!table){ return; }
+  const rows = Array.from(table.querySelectorAll('tr'));
+  const csv = rows.map(tr => Array.from(tr.querySelectorAll('th,td'))
+      .map(td => '"' + td.innerText.replace(/"/g,'""') + '"').join(',')).join('\r\n');
+  const blob = new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function tickClock(){
+  const d=new Date(); const p=n=>String(n).padStart(2,'0');
+  document.getElementById('clock').textContent = d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+}
+window.addEventListener('resize', ()=>Object.values(charts).forEach(c=>c.resize()));
+
+tickClock(); setInterval(tickClock, 1000);
+show('overview');
+setInterval(()=>{ if(activeView!=='about') refreshActive(); }, 5000);
+</script>
+</body>
+</html>
