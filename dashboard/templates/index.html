@@ -535,12 +535,17 @@ function refreshActive(){
   else if(activeView==='metrics') renderMetrics();
 }
 
-function show(view){
+const VIEWS = ['overview','category','funnel','quality','cep','rules','alerts','metrics','about'];
+
+function show(view, updateHash){
+  if(updateHash === undefined) updateHash = true;
+  if(VIEWS.indexOf(view) < 0) view = 'overview';
   activeView = view;
   document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active', a.dataset.view===view));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+view));
   const titles = {overview:'总览', category:'品类分析', funnel:'转化漏斗', quality:'数据质量', cep:'CEP 事件', rules:'规则配置', alerts:'告警中心', metrics:'数据明细', about:'数据源说明'};
   document.getElementById('pageTitle').textContent = titles[view] || '';
+  if(updateHash && location.hash !== '#'+view){ history.replaceState(null, '', '#'+view); }
   setTimeout(()=>{
     Object.values(charts).forEach(c=>c.resize());
     if(view==='rules') renderRules();
@@ -550,6 +555,10 @@ function show(view){
 
 document.querySelectorAll('.nav a').forEach(a=>{
   a.addEventListener('click', ()=> show(a.dataset.view));
+});
+
+window.addEventListener('hashchange', function(){
+  show((location.hash || '#overview').slice(1) || 'overview', false);
 });
 
 document.getElementById('rangeSel').addEventListener('change', e=>{
@@ -584,7 +593,7 @@ function tickClock(){
 window.addEventListener('resize', ()=>Object.values(charts).forEach(c=>c.resize()));
 
 tickClock(); setInterval(tickClock, 1000);
-show('overview');
+show((location.hash || '#overview').slice(1) || 'overview', false);
 setInterval(()=>{ if(activeView!=='about') refreshActive(); }, 5000);
 </script>
 </body>
