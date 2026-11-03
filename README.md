@@ -5,6 +5,10 @@
 基于 **Kafka + Flink + MySQL + Flask/ECharts** 的实时数据处理与可视化监控平台。系统回放公开的淘宝用户行为数据集（UserBehavior），
 实现实时指标聚合、行为转化漏斗、数据质量监控、CEP 复杂事件预警、可配置告警与实时可视化大屏。
 
+## 预览
+
+![监控大屏预览](docs/dashboard.png)
+
 ## 功能特性
 
 - **数据回放**：读取 `UserBehavior.csv`，按时间戳加速回放入 Kafka，可配置倍速
