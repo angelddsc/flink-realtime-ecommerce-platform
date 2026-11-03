@@ -1,5 +1,7 @@
 # 电商交易实时流处理与监控预警平台
 
+[![CI](https://github.com/angelddsc/flink-realtime-ecommerce-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/angelddsc/flink-realtime-ecommerce-platform/actions/workflows/ci.yml)
+
 > 一句话：把淘宝用户行为数据实时回灌进 Kafka，用 Flink 做实时统计与预警，再用大屏可视化。
 
 基于 **Kafka + Flink + MySQL + Flask/ECharts** 的实时数据处理与可视化监控平台。系统回放公开的淘宝用户行为数据集（UserBehavior），
