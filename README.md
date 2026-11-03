@@ -7,7 +7,13 @@
 
 ## 预览
 
-![监控大屏预览](docs/dashboard.png)
+| 总览 | 转化漏斗 |
+|---|---|
+| ![总览](docs/dashboard.png) | ![转化漏斗](docs/dashboard-funnel.png) |
+
+| 数据质量 | CEP 事件 |
+|---|---|
+| ![数据质量](docs/dashboard-quality.png) | ![CEP 事件](docs/dashboard-cep.png) |
 
 ## 功能特性
 
