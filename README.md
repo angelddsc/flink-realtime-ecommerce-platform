@@ -1,5 +1,7 @@
 # 电商交易实时流处理与监控预警平台
 
+> 一句话：把淘宝用户行为数据实时回灌进 Kafka，用 Flink 做实时统计与预警，再用大屏可视化。
+
 基于 **Kafka + Flink + MySQL + Flask/ECharts** 的实时数据处理与可视化监控平台。系统回放公开的淘宝用户行为数据集（UserBehavior），
 实现实时指标聚合、行为转化漏斗、数据质量监控、CEP 复杂事件预警、可配置告警与实时可视化大屏。
 
@@ -100,7 +102,7 @@ powershell -ExecutionPolicy Bypass -File scripts\stop-all.ps1
 | `DATA_FILE` | 数据集路径 | `data-simulator/UserBehavior.csv` |
 | `SPEED` | 回放倍速 | `100` |
 | `ONLY_BUY` | 是否只回放购买行为 | `0` |
-| `MYSQL_PASSWORD` | MySQL 密码 | `root123456` |
+| `MYSQL_PASSWORD` | MySQL 密码 | 请通过环境变量设置 |
 | `WEBHOOK_URL` | 告警推送地址（钉钉/企业微信） | 空 |
 | `WEBHOOK_TYPE` | 推送类型 dingtalk/wecom/generic | `dingtalk` |
 

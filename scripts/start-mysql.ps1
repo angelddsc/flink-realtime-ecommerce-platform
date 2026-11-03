@@ -10,4 +10,4 @@ if (Get-NetTCPConnection -LocalPort 3306 -State Listen -ErrorAction SilentlyCont
 
 Start-Process -FilePath "$MYSQL_HOME\bin\mysqld.exe" `
     -ArgumentList "--defaults-file=`"$MYSQL_HOME\my.ini`"" -WindowStyle Hidden
-Write-Host "[MySQL] 启动中... 127.0.0.1:3306 (root/root123456)"
+Write-Host "[MySQL] 启动中... 127.0.0.1:3306（账号/密码见 README 环境变量）"
